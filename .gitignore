@@ -1,0 +1,11 @@
+# Backups created by sync_itunes_ratings.py -- these contain your actual
+# music files and should never be committed or pushed to GitHub.
+backups/
+
+# Python cruft
+__pycache__/
+*.pyc
+
+# iTunes XML export can be large and is regenerated locally -- optional,
+# uncomment if you don't want it in the repo either
+# iTunes Music Library.xml
