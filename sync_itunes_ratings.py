@@ -248,12 +248,25 @@ def load_itunes_tracks(xml_path, song_filter, album_filter):
             continue
 
         filepath = file_uri_to_path(location)
+
+        # iTunes silently applies a computed "gray star" rating to unrated
+        # tracks on an album whenever you've rated OTHER tracks on that same
+        # album -- it's an average, not something you actually set for this
+        # song. iTunes' XML export flags these with "Rating Computed": true.
+        # We only want ratings you actually gave, so computed ones are
+        # treated as if there's no rating at all.
+        is_computed = bool(track.get("Rating Computed", False))
+        raw_rating = track.get("Rating")
+        itunes_rating = None if is_computed else raw_rating
+
         matched.append({
             "name": name,
             "album": album,
             "artist": artist,
             "filepath": filepath,
-            "itunes_rating": track.get("Rating"),  # None if unrated
+            "itunes_rating": itunes_rating,  # None if unrated OR only computed
+            "itunes_rating_was_computed": is_computed,
+            "itunes_rating_raw": raw_rating,
         })
     return matched
 
@@ -320,6 +333,10 @@ def build_plan(matched):
         if foreign_frames:
             names = ", ".join(f"'{email}'" for email, _ in foreign_frames)
             action += f"  [also has unrelated tag(s) under {names} -- left untouched, not read as rating]"
+
+        if t.get("itunes_rating_was_computed"):
+            action += (f"  [iTunes shows {t['itunes_rating_raw']//20 if t['itunes_rating_raw'] else 0}"
+                       f"\u2605 gray/computed stars from the album average -- not a rating you gave, ignored]")
 
         plan.append({**t, "current_popm": current_popm, "target_popm": target_popm,
                       "action": action, "action_type": action_type, "exists": exists,
