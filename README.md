@@ -31,7 +31,7 @@ python sync_itunes_ratings.py --full-library
 
 **If your XML isn't in the default location:**
 ```
-python sync_itunes_ratings.py --full-library --xml "D:\path\to\iTunes Music Library.xml"
+python sync_itunes_ratings.py --full-library --xml "E:\Music\iTunes\iTunes Music Library.xml"
 ```
 
 ## Useful options
