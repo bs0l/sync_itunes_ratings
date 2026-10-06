@@ -1,32 +1,13 @@
 #!/usr/bin/env python3
 """
-sync_itunes_ratings.py  (v2)
+sync_itunes_ratings.py  (v2.1)
 
 Writes iTunes song ratings directly into MP3 file tags (POPM), and ONLY
 the rating -- nothing else in the file is touched.
 
-FEATURES
+WHAT'S DIFFERENT FROM v2
 -------------------------
-- READ-ONLY against iTunes. This script never opens, modifies, or writes
-  back to iTunes or its XML in any way. It only reads the XML once.
-- Filter to a single song or album so you can test before touching your
-  whole library.
-- Always shows a before/after comparison table and requires you to type
-  a confirmation before writing anything. Nothing is written silently.
-- Every file it's about to modify is fully backed up first (the whole
-  file, not just the rating) to a separate backup folder, with a manifest
-  so you can restore everything with one command if you don't like the
-  result.
-- Only ever reads, compares, and writes its OWN two POPM tags (email
-  "no@email" and "Windows Media Player 9 Series" -- the second one exists
-  so Windows Explorer / WMP display the rating correctly, since that's
-  the specific tag they look for). Any OTHER rating-like tag in the file
-  -- from MediaMonkey, Traktor, an "Explicit" flag, anything -- is never
-  read as "the file's rating" and never modified. It's simply not this
-  script's data to touch.
-- Files with no iTunes rating get our OWN tag CLEARED (removed) --
-  shown explicitly in the comparison table before you confirm. Any
-  unrelated foreign tag stays exactly as it was, per above.
+- Adds filter for artists (--artist "Pink Floyd"
 
 DEPENDENCY -- exactly one, nothing else
 ----------------------------------------
@@ -48,6 +29,9 @@ Test on ONE song first:
 
 Test on an ALBUM:
     python sync_itunes_ratings.py --album "The Wall"
+
+Test on an ARTIST (all their tracks, across every album):
+    python sync_itunes_ratings.py --artist "Pink Floyd"
 
 Once you trust the output, run on your whole library:
     python sync_itunes_ratings.py --full-library
@@ -224,7 +208,7 @@ def get_current_popm(filepath):
     return ("ok", own_frames[0].rating, None, foreign, existing_counts)
 
 
-def load_itunes_tracks(xml_path, song_filter, album_filter):
+def load_itunes_tracks(xml_path, song_filter, album_filter, artist_filter):
     with open(xml_path, "rb") as f:
         library = plistlib.load(f)
 
@@ -245,6 +229,8 @@ def load_itunes_tracks(xml_path, song_filter, album_filter):
         if song_filter and song_filter.lower() not in name.lower():
             continue
         if album_filter and album_filter.lower() not in album.lower():
+            continue
+        if artist_filter and artist_filter.lower() not in artist.lower():
             continue
 
         filepath = file_uri_to_path(location)
@@ -507,6 +493,7 @@ def main():
     parser.add_argument("--xml", type=str, default=None)
     parser.add_argument("--song", type=str, default=None, help="Test on songs matching this text")
     parser.add_argument("--album", type=str, default=None, help="Test on an album matching this text")
+    parser.add_argument("--artist", type=str, default=None, help="Test on an artist matching this text")
     parser.add_argument("--full-library", action="store_true", help="Run against the entire library")
     parser.add_argument("--restore", type=str, default=None, help="Path to a manifest.csv to restore from")
     parser.add_argument("--no-clear", action="store_true",
@@ -523,8 +510,8 @@ def main():
         restore(args.restore)
         return
 
-    if not args.song and not args.album and not args.full_library:
-        print("You must specify --song, --album, or --full-library.")
+    if not args.song and not args.album and not args.artist and not args.full_library:
+        print("You must specify --song, --album, --artist, or --full-library.")
         print("Example test run: python sync_itunes_ratings.py --song \"Comfortably Numb\"")
         sys.exit(1)
 
@@ -535,7 +522,7 @@ def main():
         sys.exit(1)
 
     print(f"Reading (read-only): {xml_path}")
-    matched = load_itunes_tracks(xml_path, args.song, args.album)
+    matched = load_itunes_tracks(xml_path, args.song, args.album, args.artist)
 
     if not matched:
         print("No matching tracks found. Check your --song / --album spelling.")
